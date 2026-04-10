@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Investment Lab — Interactive Finance Simulations</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#06060a;
+  --surface:#0d0d18;
+  --panel:#13131f;
+  --panel2:#1a1a2e;
+  --gold:#e8c460;
+  --gold2:#f5d97a;
+  --cyan:#00e5ff;
+  --red:#ff4560;
+  --green:#00e396;
+  --purple:#b44fff;
+  --orange:#ff9a3c;
+  --text:#dde1f0;
+  --muted:#5a607a;
+  --border:#1e2040;
+}
+body{background:var(--ink);color:var(--text);font-family:'Outfit',sans-serif;overflow-x:hidden}
+
+/* ═══ PARTICLE BG ═══ */
+#particleCanvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.35}
+
+/* ═══ LANDING ═══ */
+#landing{
+  position:relative;z-index:1;
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:2rem;
+}
+.lab-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(3rem,10vw,8rem);
+  letter-spacing:0.04em;
+  line-height:0.9;
+  background:linear-gradient(135deg,var(--gold),var(--gold2),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:1rem;
+  animation:titleGlow 3s ease-in-out infinite alternate;
+}
+@keyframes titleGlow{
+  from{filter:drop-shadow(0 0 20px rgba(232,196,96,0.3))}
+  to{filter:drop-shadow(0 0 50px rgba(0,229,255,0.4))}
+}
+.lab-sub{font-size:1.1rem;color:var(--muted);max-width:600px;margin:0 auto 3rem;line-height:1.7;font-weight:300}
+
+/* Tool cards on landing */
+.tools-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:1.2rem;
+  max-width:1100px;
+  width:100%;
+}
+.tool-card{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:1.6rem;
+  cursor:pointer;
+  transition:all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  text-align:left;
+  position:relative;
+  overflow:hidden;
+}
+.tool-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  opacity:0;transition:opacity 0.3s;
+}
+.tool-card:hover{transform:translateY(-6px) scale(1.01);border-color:rgba(232,196,96,0.4)}
+.tool-card:hover::before{opacity:1}
+.tc-1::before{background:linear-gradient(90deg,var(--gold),var(--orange))}
+.tc-2::before{background:linear-gradient(90deg,var(--purple),var(--cyan))}
+.tc-3::before{background:linear-gradient(90deg,var(--cyan),var(--green))}
+.tc-4::before{background:linear-gradient(90deg,var(--red),var(--orange))}
+.tc-5::before{background:linear-gradient(90deg,var(--green),var(--cyan))}
+.tc-6::before{background:linear-gradient(90deg,var(--gold),var(--purple))}
+.tool-icon{font-size:2.2rem;margin-bottom:1rem;display:block}
+.tool-name{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:0.05em;margin-bottom:0.4rem}
+.tool-desc{font-size:0.82rem;color:var(--muted);line-height:1.5}
+.tool-badge{
+  display:inline-block;padding:3px 10px;border-radius:100px;
+  font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  margin-top:0.8rem;
+}
+
+/* ═══ APP SHELL ═══ */
+#appShell{display:none;position:fixed;inset:0;z-index:10;background:var(--ink);overflow:hidden}
+.shell-header{
+  height:52px;background:rgba(13,13,24,0.95);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 1.5rem;gap:1rem;
+  position:relative;z-index:20;
+}
+.shell-back{
+  background:none;border:1px solid var(--border);color:var(--muted);
+  padding:6px 14px;border-radius:8px;cursor:pointer;font-family:'Outfit',sans-serif;
+  font-size:0.82rem;transition:all 0.2s;
+}
+.shell-back:hover{border-color:var(--gold);color:var(--gold)}
+.shell-title{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.06em;color:var(--gold)}
+.shell-body{height:calc(100vh - 52px);overflow-y:auto;position:relative;z-index:1}
+
+/* ═══ SHARED UI ═══ */
+.sim-wrap{padding:2rem;max-width:1100px;margin:0 auto}
+.sim-header{margin-bottom:2rem}
+.sim-label{font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem}
+.sim-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,4vw,3rem);letter-spacing:0.04em;line-height:1}
+.sim-intro{color:var(--muted);font-size:0.9rem;margin-top:0.8rem;line-height:1.6;max-width:700px}
+
+.panel-box{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1.4rem}
+.panel-title{font-size:0.75rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:0.6rem}
+
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 22px;border-radius:9px;border:none;cursor:pointer;
+  font-family:'Outfit',sans-serif;font-size:0.88rem;font-weight:600;
+  transition:all 0.25s;
+}
+.btn-gold{background:var(--gold);color:#0a0a0f}
+.btn-gold:hover{background:var(--gold2);transform:translateY(-1px);box-shadow:0 4px 20px rgba(232,196,96,0.35)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+.btn-red{background:var(--red);color:white}
+.btn-green{background:var(--green);color:#06060a}
+.btn-cyan{background:var(--cyan);color:#06060a}
+.btn-sm{padding:7px 16px;font-size:0.8rem}
+
+.mono{font-family:'JetBrains Mono',monospace}
+.val-pos{color:var(--green)}
+.val-neg{color:var(--red)}
+.val-gold{color:var(--gold)}
+
+/* sliders */
+.sl-group{margin-bottom:1.2rem}
+.sl-header{display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:0.4rem;color:var(--muted)}
+.sl-header span:last-child{color:var(--gold);font-family:'JetBrains Mono',monospace;font-weight:600}
+input[type=range]{width:100%;-webkit-appearance:none;height:3px;background:var(--border);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 0 0 3px rgba(232,196,96,0.2)}
+
+canvas{display:block}
+
+/* ═══════════════════════════════════════ */
+/* TOOL 1: PORTFOLIO BATTLEGROUND         */
+/* ═══════════════════════════════════════ */
+.battle-arena{
+  background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  padding:1rem;margin:1rem 0;
+}
+.arena-canvas-wrap{position:relative;border-radius:10px;overflow:hidden;background:#08080f}
+#arenaCanvas{width:100%;height:260px}
+.arena-legend{display:flex;gap:1.5rem;margin:0.8rem 0;font-size:0.8rem}
+.leg-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
+
+.battle-controls{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.battle-port{background:var(--panel2);border-radius:10px;padding:1rem;border:1px solid var(--border)}
+.port-name{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.04em;margin-bottom:0.8rem}
+
+.asset-row{display:flex;align-items:center;gap:8px;margin-bottom:0.5rem}
+.asset-label{font-size:0.75rem;color:var(--muted);width:80px;flex-shrink:0}
+.asset-bar{flex:1;height:6px;background:var(--border);border-radius:3px;position:relative;overflow:hidden}
+.asset-bar-fill{height:100%;border-radius:3px;transition:width 0.3s}
+.asset-val{font-size:0.72rem;color:var(--text);width:30px;text-align:right;font-family:'JetBrains Mono',monospace}
+
+.scenario-btns{display:flex;gap:0.5rem;flex-wrap:wrap;margin:1rem 0}
+.scen-btn{
+  padding:7px 14px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel);color:var(--muted);cursor:pointer;
+  font-size:0.78rem;font-family:'Outfit',sans-serif;transition:all 0.2s;
+}
+.scen-btn:hover,.scen-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(232,196,96,0.05)}
+
+.battle-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.8rem;margin:1rem 0}
+.bstat{background:var(--panel2);border-radius:10px;padding:0.8rem;text-align:center;border:1px solid var(--border)}
+.bstat-num{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.04em}
+.bstat-label{font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em}
+
+/* ═══════════════════════════════════════ */
+/* TOOL 2: BIAS DETECTIVE                  */
+/* ═══════════════════════════════════════ */
+.bias-scene{
+  background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  padding:2rem;min-height:400px;position:relative;overflow:hidden;
+}
+.bias-q{font-size:1.1rem;font-weight:600;line-height:1.5;margin-bottom:1.5rem;max-width:600px}
+.bias-opts{display:flex;flex-direction:column;gap:0.7rem}
+.bias-opt{
+  background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  padding:1rem 1.2rem;cursor:pointer;transition:all 0.2s;font-size:0.9rem;
+  display:flex;align-items:flex-start;gap:10px;
+}
+.bias-opt:hover{border-color:var(--purple);background:rgba(180,79,255,0.06)}
+.bias-opt-key{
+  width:24px;height:24px;border-radius:6px;background:rgba(255,255,255,0.06);
+  display:flex;align-items:center;justify-content:center;font-size:0.75rem;
+  color:var(--muted);flex-shrink:0;font-weight:700;font-family:'JetBrains Mono',monospace;
+}
+.bias-reveal{
+  background:rgba(180,79,255,0.08);border:1px solid rgba(180,79,255,0.3);
+  border-radius:14px;padding:1.5rem;margin-top:1.5rem;display:none;
+}
+.bias-reveal.show{display:block}
+.bias-name{
+  font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.04em;
+  color:var(--purple);margin-bottom:0.5rem;
+}
+.bias-meter{height:8px;background:var(--border);border-radius:4px;margin:0.8rem 0;overflow:hidden}
+.bias-meter-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--purple),var(--cyan));transition:width 1.2s ease}
+.brain-display{position:absolute;right:2rem;top:2rem;font-size:5rem;opacity:0.08;pointer-events:none;animation:brainPulse 3s infinite}
+@keyframes brainPulse{0%,100%{transform:scale(1);opacity:0.08}50%{transform:scale(1.1);opacity:0.14}}
+
+.bias-progress{display:flex;gap:6px;margin-bottom:1.5rem}
+.bp-dot{width:28px;height:4px;border-radius:2px;background:var(--border);transition:background 0.3s}
+.bp-dot.done{background:var(--purple)}
+.bp-dot.current{background:var(--gold)}
+
+/* ═══════════════════════════════════════ */
+/* TOOL 3: FRONTIER SCULPTOR              */
+/* ═══════════════════════════════════════ */
+#frontierCanvas{width:100%;height:420px;cursor:crosshair;border-radius:10px}
+.asset-palette{display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:1rem}
+.asset-chip{
+  padding:6px 14px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel2);font-size:0.8rem;cursor:pointer;transition:all 0.2s;
+  display:flex;align-items:center;gap:6px;
+}
+.asset-chip:hover{border-color:var(--cyan);transform:scale(1.05)}
+.asset-chip.placed{opacity:0.5;cursor:not-allowed}
+.chip-dot{width:8px;height:8px;border-radius:50%}
+.frontier-info{
+  background:var(--panel2);border-radius:10px;padding:1rem;
+  font-size:0.82rem;color:var(--muted);margin-top:0.5rem;
+  border:1px solid var(--border);line-height:1.6;
+}
+
+/* ═══════════════════════════════════════ */
+/* TOOL 4: CRASH SIMULATOR                */
+/* ═══════════════════════════════════════ */
+.crash-stage{position:relative;background:#08080f;border-radius:12px;overflow:hidden}
+#crashCanvas{width:100%;height:300px}
+.crash-overlay{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(6,6,10,0.85);font-family:'Bebas Neue',sans-serif;
+  font-size:3rem;letter-spacing:0.05em;opacity:0;transition:opacity 0.5s;
+  pointer-events:none;
+}
+.crash-overlay.show{opacity:1}
+.crash-event-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:0.8rem;margin-bottom:1rem}
+.crash-ev{
+  background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  padding:1rem;cursor:pointer;transition:all 0.25s;text-align:center;
+}
+.crash-ev:hover{border-color:var(--red);transform:translateY(-2px)}
+.crash-ev.active{border-color:var(--red);background:rgba(255,69,96,0.08)}
+.crash-ev-year{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--red)}
+.crash-ev-name{font-size:0.75rem;color:var(--muted);margin-top:0.3rem}
+.crash-ev-drop{font-size:0.9rem;font-weight:700;color:var(--red);margin-top:0.4rem}
+
+.crash-result-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem}
+.crash-res{background:var(--panel2);border-radius:10px;padding:1rem;border:1px solid var(--border)}
+.res-port-name{font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:0.5rem}
+.res-final{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:0.04em}
+.res-breakdown{margin-top:0.6rem}
+.res-row{display:flex;justify-content:space-between;font-size:0.78rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+.survivor-badge{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
+  border-radius:100px;font-size:0.7rem;font-weight:700;margin-top:0.5rem;
+}
+
+/* ═══════════════════════════════════════ */
+/* TOOL 5: BOND DURATION RACE             */
+/* ═══════════════════════════════════════ */
+.race-track{background:#08080f;border-radius:12px;padding:1rem;position:relative;overflow:hidden}
+#raceCanvas{width:100%;height:200px}
+.rate-control{display:flex;align-items:center;gap:1rem;margin:1rem 0;flex-wrap:wrap}
+.rate-display{
+  background:var(--panel2);border-radius:10px;padding:0.8rem 1.4rem;
+  font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--cyan);
+  border:1px solid var(--border);min-width:100px;text-align:center;
+}
+.rate-btn{
+  width:40px;height:40px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel);color:var(--text);font-size:1.2rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all 0.2s;
+}
+.rate-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.bond-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.7rem;margin-top:1rem}
+.bond-card{
+  background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  padding:0.8rem;text-align:center;transition:border-color 0.3s;
+}
+.bond-card.leader{border-color:var(--gold)}
+.bond-card.loser{border-color:var(--red)}
+.bond-name{font-size:0.8rem;font-weight:600;margin-bottom:0.3rem}
+.bond-duration{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;color:var(--cyan)}
+.bond-price-chg{font-size:0.78rem;font-family:'JetBrains Mono',monospace;margin-top:0.3rem}
+.bond-bar-wrap{height:4px;background:var(--border);border-radius:2px;margin-top:0.5rem;overflow:hidden}
+.bond-bar-fill{height:100%;border-radius:2px;transition:width 0.8s ease;background:var(--green)}
+.race-insight{
+  background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);
+  border-radius:10px;padding:1rem;margin-top:1rem;font-size:0.85rem;color:var(--text);
+  transition:all 0.3s;
+}
+
+/* ═══════════════════════════════════════ */
+/* TOOL 6: INVESTOR ARCHETYPE QUIZ        */
+/* ═══════════════════════════════════════ */
+.quiz-scene{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.quiz-header{
+  padding:2rem;background:linear-gradient(135deg,rgba(232,196,96,0.08),rgba(180,79,255,0.08));
+  border-bottom:1px solid var(--border);
+}
+.quiz-timer{
+  display:flex;align-items:center;gap:10px;
+  font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:var(--gold);
+}
+.timer-ring{
+  width:44px;height:44px;position:relative;
+}
+.timer-ring svg{transform:rotate(-90deg)}
+.quiz-body{padding:2rem}
+.q-text{font-size:1.05rem;font-weight:500;line-height:1.55;margin-bottom:1.5rem;max-width:620px}
+.q-opts{display:grid;grid-template-columns:1fr 1fr;gap:0.7rem}
+.q-opt{
+  background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  padding:1rem;cursor:pointer;transition:all 0.22s;font-size:0.85rem;line-height:1.4;
+}
+.q-opt:hover{border-color:var(--gold);background:rgba(232,196,96,0.06);transform:scale(1.02)}
+.q-opt.chosen{border-color:var(--gold);background:rgba(232,196,96,0.1)}
+
+.archetype-reveal{display:none;padding:2rem}
+.archetype-reveal.show{display:block}
+.arch-card{
+  border-radius:16px;padding:2rem;position:relative;overflow:hidden;
+  animation:archReveal 0.8s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes archReveal{
+  from{opacity:0;transform:scale(0.85) translateY(20px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+.arch-bg{position:absolute;inset:0;opacity:0.08;font-size:12rem;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.arch-name{font-family:'Bebas Neue',sans-serif;font-size:3rem;letter-spacing:0.06em;position:relative;z-index:1}
+.arch-tagline{font-size:1.1rem;color:rgba(255,255,255,0.7);margin-bottom:1.5rem;position:relative;z-index:1}
+.arch-traits{display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;position:relative;z-index:1}
+.arch-trait{
+  background:rgba(0,0,0,0.3);border-radius:10px;padding:0.8rem;
+  font-size:0.82rem;
+}
+.trait-label{font-size:0.67rem;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.5);margin-bottom:0.2rem}
+.trait-val{font-weight:600}
+.arch-prescription{
+  margin-top:1.5rem;padding:1.2rem;background:rgba(0,0,0,0.3);border-radius:10px;
+  font-size:0.85rem;line-height:1.6;position:relative;z-index:1;
+}
+.arch-prescription strong{display:block;margin-bottom:0.4rem;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;opacity:0.6}
+.risk-gauge{
+  height:8px;background:rgba(0,0,0,0.3);border-radius:4px;margin-top:0.6rem;overflow:hidden;
+  position:relative;z-index:1;
+}
+.risk-gauge-fill{height:100%;border-radius:4px;transition:width 1s ease 0.5s}
+
+.quiz-progress{
+  display:flex;gap:4px;margin-bottom:1rem;
+}
+.qp{width:100%;height:3px;background:var(--border);border-radius:2px;flex:1;transition:background 0.3s}
+.qp.done{background:var(--gold)}
+.qp.cur{background:rgba(232,196,96,0.4)}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:700px){
+  .battle-controls,.crash-result-grid{grid-template-columns:1fr}
+  .crash-event-cards{grid-template-columns:1fr}
+  .q-opts{grid-template-columns:1fr}
+  .arch-traits{grid-template-columns:1fr}
+  .battle-stats{grid-template-columns:1fr 1fr}
+}
+
+/* ═══ GLOW EFFECTS ═══ */
+.glow-gold{box-shadow:0 0 30px rgba(232,196,96,0.15)}
+.glow-cyan{box-shadow:0 0 30px rgba(0,229,255,0.15)}
+.glow-red{box-shadow:0 0 30px rgba(255,69,96,0.2)}
+.glow-green{box-shadow:0 0 30px rgba(0,227,150,0.15)}
+
+/* notification */
+.notif{
+  position:fixed;bottom:2rem;right:2rem;z-index:999;
+  background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  padding:1rem 1.5rem;font-size:0.88rem;
+  transform:translateY(100px);opacity:0;transition:all 0.4s;
+  max-width:320px;border-left:3px solid var(--gold);
+}
+.notif.show{transform:translateY(0);opacity:1}
+</style>
+</head>
+<body>
+
+<canvas id="particleCanvas"></canvas>
+
+<!-- ═══════════ LANDING ═══════════ -->
+<div id="landing">
+  <div class="lab-title">THE INVESTMENT LAB</div>
+  <p class="lab-sub">6 never-before-seen interactive simulations built from a complete course in Investment Analysis & Portfolio Management. Learn by doing — not reading.</p>
+
+  <div class="tools-grid">
+    <div class="tool-card tc-1" onclick="openTool('battleground')">
+      <span class="tool-icon">⚔️</span>
+      <div class="tool-name">Portfolio Battleground</div>
+      <div class="tool-desc">Build two rival portfolios and watch them fight through live market crash scenarios in real time</div>
+      <span class="tool-badge" style="background:rgba(232,196,96,0.12);color:var(--gold)">Portfolio Theory</span>
+    </div>
+    <div class="tool-card tc-2" onclick="openTool('biasDetective')">
+      <span class="tool-icon">🧠</span>
+      <div class="tool-name">Bias Detective</div>
+      <div class="tool-desc">Make investment decisions — the AI detective reveals which of 9 cognitive biases are controlling you</div>
+      <span class="tool-badge" style="background:rgba(180,79,255,0.12);color:var(--purple)">Behavioural Finance</span>
+    </div>
+    <div class="tool-card tc-3" onclick="openTool('frontierSculptor')">
+      <span class="tool-icon">🎨</span>
+      <div class="tool-name">Frontier Sculptor</div>
+      <div class="tool-desc">Drag and place assets on a risk-return canvas. Watch the Efficient Frontier emerge in real time</div>
+      <span class="tool-badge" style="background:rgba(0,229,255,0.12);color:var(--cyan)">Modern Portfolio Theory</span>
+    </div>
+    <div class="tool-card tc-4" onclick="openTool('crashSim')">
+      <span class="tool-icon">💥</span>
+      <div class="tool-name">Crash Survival Simulator</div>
+      <div class="tool-desc">Survive the Dot-Com bust, 2008 Financial Crisis, and COVID crash. See diversification save or destroy you</div>
+      <span class="tool-badge" style="background:rgba(255,69,96,0.12);color:var(--red)">Risk Management</span>
+    </div>
+    <div class="tool-card tc-5" onclick="openTool('bondRace')">
+      <span class="tool-icon">🏁</span>
+      <div class="tool-name">Bond Duration Race</div>
+      <div class="tool-desc">Raise or cut interest rates — bonds race against each other based on their duration sensitivity</div>
+      <span class="tool-badge" style="background:rgba(0,227,150,0.12);color:var(--green)">Fixed Income</span>
+    </div>
+    <div class="tool-card tc-6" onclick="openTool('archetypeQuiz')">
+      <span class="tool-icon">🎭</span>
+      <div class="tool-name">Investor Archetype Quiz</div>
+      <div class="tool-desc">60-second quiz with 8 market dilemmas. Discover your investor psychology type with a cinematic reveal</div>
+      <span class="tool-badge" style="background:rgba(232,196,96,0.12);color:var(--gold)">Investor Psychology</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ APP SHELL ═══════════ -->
+<div id="appShell">
+  <div class="shell-header">
+    <button class="shell-back" onclick="closeTool()">← Back to Lab</button>
+    <div class="shell-title" id="shellTitle">Tool</div>
+  </div>
+  <div class="shell-body" id="shellBody"></div>
+</div>
+
+<div class="notif" id="notif"></div>
+
+<script>
+/* ═══════════════════════════════════
+   PARTICLE BACKGROUND
+═══════════════════════════════════ */
+const pCanvas=document.getElementById('particleCanvas');
+const pCtx=pCanvas.getContext('2d');
+let particles=[];
+function resizeP(){pCanvas.width=window.innerWidth;pCanvas.height=window.innerHeight}
+resizeP();window.addEventListener('resize',resizeP);
+function initParticles(){
+  particles=[];
+  for(let i=0;i<60;i++){
+    particles.push({
+      x:Math.random()*pCanvas.width,y:Math.random()*pCanvas.height,
+      r:Math.random()*1.5+0.3,
+      vx:(Math.random()-0.5)*0.2,vy:(Math.random()-0.5)*0.2,
+      alpha:Math.random()*0.6+0.1,
+      color:Math.random()<0.5?'232,196,96':'0,229,255'
+    });
+  }
+}
+initParticles();
+function animateP(){
+  pCtx.clearRect(0,0,pCanvas.width,pCanvas.height);
+  particles.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=pCanvas.width;if(p.x>pCanvas.width)p.x=0;
+    if(p.y<0)p.y=pCanvas.height;if(p.y>pCanvas.height)p.y=0;
+    pCtx.beginPath();pCtx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    pCtx.fillStyle=`rgba(${p.color},${p.alpha})`;pCtx.fill();
+  });
+  requestAnimationFrame(animateP);
+}
+animateP();
+
+/* ═══════════════════════════════════
+   SHELL NAVIGATION
+═══════════════════════════════════ */
+const toolTitles={battleground:'⚔️ Portfolio Battleground',biasDetective:'🧠 Bias Detective',frontierSculptor:'🎨 Frontier Sculptor',crashSim:'💥 Crash Survival Simulator',bondRace:'🏁 Bond Duration Race',archetypeQuiz:'🎭 Investor Archetype Quiz'};
+let currentTool=null;
+let toolCleanup=null;
+
+function openTool(name){
+  currentTool=name;
+  document.getElementById('landing').style.display='none';
+  document.getElementById('appShell').style.display='block';
+  document.getElementById('shellTitle').textContent=toolTitles[name];
+  const body=document.getElementById('shellBody');
+  body.innerHTML='';
+  if(toolCleanup)toolCleanup();
+  toolCleanup=tools[name](body);
+}
+function closeTool(){
+  if(toolCleanup){toolCleanup();toolCleanup=null;}
+  document.getElementById('appShell').style.display='none';
+  document.getElementById('landing').style.display='flex';
+  currentTool=null;
+}
+function showNotif(msg,color='var(--gold)'){
+  const n=document.getElementById('notif');
+  n.textContent=msg;
+  n.style.borderLeftColor=color;
+  n.classList.add('show');
+  setTimeout(()=>n.classList.remove('show'),3000);
+}
+
+/* ══════════════════════════════════════════════════════
+   TOOL 1: PORTFOLIO BATTLEGROUND
+══════════════════════════════════════════════════════ */
+const tools={
+
+battleground(container){
+  container.innerHTML=`
+  <div class="sim-wrap">
+    <div class="sim-header">
+      <div class="sim-label">Tool 1 — Portfolio Theory</div>
+      <div class="sim-title">PORTFOLIO BATTLEGROUND</div>
+      <div class="sim-intro">Allocate weights to two rival portfolios. Then choose a market scenario and watch them fight for survival. The math of diversification plays out live.</div>
+    </div>
+
+    <div class="battle-arena">
+      <div class="arena-canvas-wrap">
+        <canvas id="arenaCanvas"></canvas>
+      </div>
+      <div class="arena-legend">
+        <span><span class="leg-dot" style="background:#e8c460"></span>Portfolio Alpha</span>
+        <span><span class="leg-dot" style="background:#00e5ff"></span>Portfolio Beta</span>
+        <span><span class="leg-dot" style="background:#ff4560;opacity:0.5"></span>Market Index</span>
+      </div>
+    </div>
+
+    <div class="battle-controls">
+      <div class="battle-port">
+        <div class="port-name" style="color:var(--gold)">⚡ PORTFOLIO ALPHA</div>
+        <div class="sim-label" style="margin-bottom:0.6rem">Concentrated — Big bets</div>
+        ${buildPortSliders('alpha',{tech:70,pharma:20,fmcg:5,gold:5})}
+      </div>
+      <div class="battle-port">
+        <div class="port-name" style="color:var(--cyan)">🌊 PORTFOLIO BETA</div>
+        <div class="sim-label" style="margin-bottom:0.6rem">Diversified — Balanced risk</div>
+        ${buildPortSliders('beta',{tech:20,pharma:20,fmcg:25,gold:35})}
+      </div>
+    </div>
+
+    <div class="panel-box" style="margin-bottom:1rem">
+      <div class="panel-title">Choose Market Scenario</div>
+      <div class="scenario-btns">
+        <button class="scen-btn active" data-scen="bull" onclick="setBattleScen(this,'bull')">📈 Bull Market</button>
+        <button class="scen-btn" data-scen="dotcom" onclick="setBattleScen(this,'dotcom')">💻 Dot-Com Crash</button>
+        <button class="scen-btn" data-scen="crisis2008" onclick="setBattleScen(this,'crisis2008')">🏦 2008 Crisis</button>
+        <button class="scen-btn" data-scen="covid" onclick="setBattleScen(this,'covid')">🦠 COVID Crash</button>
+        <button class="scen-btn" data-scen="recovery" onclick="setBattleScen(this,'recovery')">🔄 Recovery Rally</button>
+      </div>
+      <button class="btn btn-gold" onclick="startBattle()">▶ Run Simulation</button>
+    </div>
+
+    <div class="battle-stats">
+      <div class="bstat">
+        <div class="bstat-num" id="bstat-alpha" style="color:var(--gold)">—</div>
+        <div class="bstat-label">Alpha Return</div>
+      </div>
+      <div class="bstat">
+        <div class="bstat-num" id="bstat-winner" style="color:var(--text)">—</div>
+        <div class="bstat-label">Winner</div>
+      </div>
+      <div class="bstat">
+        <div class="bstat-num" id="bstat-beta" style="color:var(--cyan)">—</div>
+        <div class="bstat-label">Beta Return</div>
+      </div>
+    </div>
+
+    <div class="panel-box" id="battle-lesson" style="display:none;border-left:3px solid var(--gold)">
+      <div class="panel-title">📚 What This Demonstrates</div>
+      <div id="battle-lesson-text" style="font-size:0.88rem;color:var(--text);line-height:1.7"></div>
+    </div>
+  </div>`;
+
+  // Canvas setup
+  const can=document.getElementById('arenaCanvas');
+  can.width=can.offsetWidth*devicePixelRatio;
+  can.height=260*devicePixelRatio;
+  can.style.width='100%';can.style.height='260px';
+  const ctx=can.getContext('2d');
+  ctx.scale(devicePixelRatio,devicePixelRatio);
+  const W=can.offsetWidth,H=260;
+
+  let scenario='bull';
+  let animReq=null;
+  let simRunning=false;
+
+  window.setBattleScen=function(el,s){
+    document.querySelectorAll('.scen-btn').forEach(b=>b.classList.remove('active'));
+    el.classList.add('active');scenario=s;
+  };
+
+  // Scenario definitions: per-asset monthly returns
+  const scenData={
+    bull:{label:'🐂 Bull Market (24 months)',tech:[0.04,0.05,0.03,0.06,0.04,0.05,0.03,0.04,0.06,0.05,0.04,0.05,0.04,0.03,0.05,0.06,0.04,0.05,0.03,0.04,0.05,0.04,0.03,0.05],pharma:[0.02,0.03,0.02,0.02,0.03,0.02,0.02,0.03,0.02,0.02,0.03,0.02,0.02,0.03,0.02,0.02,0.03,0.02,0.02,0.03,0.02,0.02,0.03,0.02],fmcg:[0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02],gold:[-0.01,0.00,-0.01,0.00,-0.01,0.00,-0.01,0.00,-0.01,0.00,-0.01,0.00,-0.01,0.00,-0.01,0.00,-0.01,0.00,-0.01,0.00,-0.01,0.00,-0.01,0.00],lesson:"In a bull market, concentration can win — but only because of luck in sector selection. This ignores unsystematic risk. The diversified portfolio also grew steadily with far lower volatility."},
+    dotcom:{label:'💻 Dot-Com Crash (2000-02)',tech:[-0.12,-0.15,-0.18,-0.10,-0.08,-0.20,-0.15,-0.12,-0.09,-0.18,-0.14,-0.10,-0.08,-0.15,-0.12,-0.09,-0.06,-0.10,-0.08,-0.05,-0.03,0.02,0.04,0.05],pharma:[0.03,0.02,0.04,0.03,0.02,0.01,0.03,0.02,0.04,0.02,0.03,0.02,0.03,0.02,0.01,0.03,0.02,0.03,0.02,0.03,0.02,0.03,0.02,0.03],fmcg:[0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01],gold:[0.04,0.03,0.05,0.04,0.03,0.05,0.04,0.03,0.05,0.04,0.03,0.05,0.04,0.03,0.05,0.04,0.03,0.05,0.04,0.03,0.05,0.04,0.03,0.05],lesson:"The Dot-Com crash wiped 75%+ off tech stocks. Portfolio Alpha (70% tech) was decimated. Portfolio Beta's diversification into gold, FMCG, and pharma acted as shock absorbers — demonstrating that negative correlation saves portfolios in sector-specific crashes."},
+    crisis2008:{label:'🏦 2008 Financial Crisis',tech:[-0.08,-0.10,-0.12,-0.15,-0.20,-0.18,-0.14,-0.12,-0.10,-0.08,-0.05,-0.03,0.01,0.02,0.03,0.04,0.03,0.04,0.05,0.04,0.03,0.05,0.04,0.05],pharma:[-0.02,-0.03,-0.04,-0.05,-0.03,-0.02,-0.04,-0.03,-0.02,-0.01,0.01,0.02,0.02,0.03,0.02,0.03,0.02,0.03,0.02,0.03,0.02,0.03,0.02,0.03],fmcg:[-0.01,-0.01,-0.02,-0.02,-0.01,-0.01,-0.02,-0.01,-0.01,0.00,0.01,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01,0.02,0.01],gold:[0.05,0.06,0.08,0.10,0.08,0.07,0.09,0.08,0.07,0.08,0.06,0.07,0.05,0.06,0.05,0.04,0.05,0.04,0.05,0.04,0.05,0.04,0.03,0.04],lesson:"2008 was a systemic crisis — but gold surged as a safe haven. Portfolio Beta's 35% gold allocation became its lifeline. While everything fell, gold's strong negative correlation with equities prevented catastrophic losses. This is a real-world example of correlation-based risk management."},
+    covid:{label:'🦠 COVID Crash + Recovery',tech:[-0.05,-0.25,-0.30,0.15,0.20,0.18,0.15,0.10,0.12,0.08,0.10,0.08,0.10,0.07,0.08,0.06,0.07,0.06,0.05,0.04,0.05,0.04,0.05,0.04],pharma:[0.02,-0.10,0.15,0.20,0.15,0.12,0.10,0.08,0.09,0.07,0.08,0.06,0.07,0.05,0.06,0.05,0.06,0.05,0.04,0.04,0.05,0.04,0.04,0.03],fmcg:[-0.03,-0.05,0.05,0.08,0.06,0.05,0.04,0.03,0.04,0.03,0.04,0.03,0.04,0.03,0.03,0.03,0.04,0.03,0.03,0.02,0.03,0.02,0.03,0.02],gold:[0.03,0.08,0.10,0.05,0.04,0.06,0.04,0.05,0.04,0.05,0.03,0.04,0.03,0.04,0.03,0.03,0.04,0.03,0.02,0.03,0.02,0.03,0.02,0.02],lesson:"COVID was unique: a sharp crash followed by a massive tech-led recovery. Portfolio Alpha actually recovered strongly due to tech's digital revolution boom. However, Beta's stability during the crash month prevented panic selling — a key behavioural advantage of diversification."},
+    recovery:{label:'🔄 Post-Crisis Recovery',tech:[0.06,0.08,0.07,0.06,0.08,0.07,0.06,0.05,0.07,0.06,0.05,0.07,0.06,0.05,0.06,0.05,0.06,0.05,0.04,0.05,0.04,0.05,0.04,0.05],pharma:[0.04,0.05,0.04,0.04,0.05,0.04,0.04,0.03,0.04,0.04,0.03,0.04,0.04,0.03,0.04,0.03,0.04,0.03,0.03,0.04,0.03,0.04,0.03,0.04],fmcg:[0.03,0.03,0.03,0.02,0.03,0.03,0.02,0.02,0.03,0.02,0.02,0.03,0.02,0.02,0.03,0.02,0.03,0.02,0.02,0.02,0.02,0.02,0.02,0.02],gold:[-0.02,-0.01,-0.02,-0.01,-0.02,-0.01,-0.02,-0.01,-0.02,-0.01,-0.02,-0.01,-0.02,-0.01,-0.02,-0.01,-0.02,-0.01,-0.02,-0.01,-0.02,-0.01,-0.02,-0.01],lesson:"In recovery phases, broad equity exposure wins — even modest diversification captures the upswing. Notice that gold (negative in recoveries) drags Beta slightly. This illustrates the trade-off: diversification protects in downturns but may limit peak upside. The Efficient Frontier quantifies this trade-off precisely."}
+  };
+
+  function getWeights(prefix){
+    const assets=['tech','pharma','fmcg','gold'];
+    const vals={};
+    assets.forEach(a=>{
+      const el=document.getElementById(`sl-${prefix}-${a}`);
+      vals[a]=el?parseInt(el.value)/100:0.25;
+    });
+    return vals;
+  }
+
+  function portReturn(weights,data){
+    let v=100;
+    const hist=[v];
+    for(let m=0;m<24;m++){
+      let r=0;
+      Object.keys(weights).forEach(a=>{ r+=weights[a]*(data[a][m]||0); });
+      v*=(1+r);hist.push(v);
+    }
+    return hist;
+  }
+
+  function drawArena(alphaHist,betaHist){
+    const W=can.offsetWidth,H=260;
+    ctx.clearRect(0,0,W,H);
+
+    // Grid
+    ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
+    for(let i=0;i<5;i++){const y=H*0.1+i*(H*0.8/4);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+    const allVals=[...alphaHist,...betaHist];
+    const minV=Math.min(...allVals)*0.98;
+    const maxV=Math.max(...allVals)*1.02;
+    const scaleY=v=>H-20-(v-minV)/(maxV-minV)*(H-40);
+    const scaleX=i=>20+i*(W-40)/24;
+
+    function drawLine(hist,color,glow){
+      ctx.shadowColor=glow;ctx.shadowBlur=12;
+      ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2.5;
+      hist.forEach((v,i)=>{if(i===0)ctx.moveTo(scaleX(i),scaleY(v));else ctx.lineTo(scaleX(i),scaleY(v));});
+      ctx.stroke();
+      // Area fill
+      ctx.shadowBlur=0;
+      const grad=ctx.createLinearGradient(0,0,0,H);
+      grad.addColorStop(0,color.replace(')',',0.15)').replace('rgb','rgba'));
+      grad.addColorStop(1,'transparent');
+      ctx.beginPath();
+      hist.forEach((v,i)=>{if(i===0)ctx.moveTo(scaleX(i),scaleY(v));else ctx.lineTo(scaleX(i),scaleY(v));});
+      ctx.lineTo(scaleX(hist.length-1),H);ctx.lineTo(scaleX(0),H);
+      ctx.closePath();ctx.fillStyle=grad;ctx.fill();
+      ctx.shadowBlur=0;
+    }
+
+    // Baseline at 100
+    const baseY=scaleY(100);
+    ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.setLineDash([4,4]);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(W,baseY);ctx.stroke();
+    ctx.setLineDash([]);
+
+    drawLine(alphaHist,'#e8c460','#e8c460');
+    drawLine(betaHist,'#00e5ff','#00e5ff');
+
+    // Labels
+    ctx.font=`bold 11px 'JetBrains Mono'`;ctx.textAlign='left';
+    ctx.fillStyle='#e8c460';
+    ctx.fillText(`α ${(alphaHist[alphaHist.length-1]-100).toFixed(1)}%`,8,scaleY(alphaHist[alphaHist.length-1])-6);
+    ctx.fillStyle='#00e5ff';
+    ctx.fillText(`β ${(betaHist[betaHist.length-1]-100).toFixed(1)}%`,8,scaleY(betaHist[betaHist.length-1])+14);
+  }
+
+  window.startBattle=function(){
+    const aw=getWeights('alpha'),bw=getWeights('beta');
+    const scen=scenData[scenario];
+    const aHist=portReturn(aw,scen);
+    const bHist=portReturn(bw,scen);
+    let frame=0;
+    if(animReq)cancelAnimationFrame(animReq);
+    simRunning=true;
+    document.getElementById('battle-lesson').style.display='none';
+
+    function animate(){
+      if(frame>24){
+        const aRet=(aHist[24]-100).toFixed(1);
+        const bRet=(bHist[24]-100).toFixed(1);
+        document.getElementById('bstat-alpha').textContent=`${aRet>0?'+':''}${aRet}%`;
+        document.getElementById('bstat-alpha').className='bstat-num '+(aRet>0?'val-pos':'val-neg');
+        document.getElementById('bstat-beta').textContent=`${bRet>0?'+':''}${bRet}%`;
+        document.getElementById('bstat-beta').className='bstat-num '+(bRet>0?'val-pos':'val-neg');
+        const winner=parseFloat(aRet)>parseFloat(bRet)?'⚡ Alpha':'🌊 Beta';
+        document.getElementById('bstat-winner').textContent=winner;
+        document.getElementById('bstat-winner').style.color=parseFloat(aRet)>parseFloat(bRet)?'var(--gold)':'var(--cyan)';
+        document.getElementById('battle-lesson').style.display='block';
+        document.getElementById('battle-lesson-text').textContent=scen.lesson;
+        showNotif(`Simulation complete! ${winner} wins.`);
+        return;
+      }
+      drawArena(aHist.slice(0,frame+1),bHist.slice(0,frame+1));
+      frame++;
+      animReq=setTimeout(()=>requestAnimationFrame(animate),80);
+    }
+    animate();
+  };
+
+  // Draw initial state
+  drawArena([100],[100]);
+
+  // Slider display
+  ['alpha','beta'].forEach(p=>{
+    ['tech','pharma','fmcg','gold'].forEach(a=>{
+      const sl=document.getElementById(`sl-${p}-${a}`);
+      const vl=document.getElementById(`slv-${p}-${a}`);
+      if(sl&&vl)sl.oninput=()=>{vl.textContent=sl.value+'%';updateBarFill(p,a,parseInt(sl.value))};
+    });
+  });
+
+  function updateBarFill(p,a,val){
+    const bar=document.getElementById(`bar-${p}-${a}`);
+    if(bar)bar.style.width=val+'%';
+  }
+
+  return ()=>{if(animReq)clearTimeout(animReq);};
+},
+
+/* ══════════════════════════════════════════════════════
+   TOOL 2: BIAS DETECTIVE
+══════════════════════════════════════════════════════ */
+biasDetective(container){
+  const questions=[
+    {q:"📰 Breaking news: A company you hold just missed earnings by 5%. Three analysts downgrade it. You...",opts:["Hold firm — one quarter means nothing","Sell immediately, the news confirms my suspicions","Buy more — this is a temporary overreaction","Ask for more data before deciding"],biases:['Anchoring','Representativeness','Overconfidence','Rational'],correct:3,bias:'Representativeness',biasDef:"You're pattern-matching recent bad news to predict the future — confusing short-term events with long-term fundamentals.",severity:72},
+    {q:"📈 Your portfolio is up 40% this year. A friend says 'you're really skilled at picking stocks.' You think...",opts:["Yes — my research process is genuinely superior","Probably partly skill, partly a bull market","It's mostly luck — the market rose broadly","I need more years of data to know for sure"],biases:['Self-attribution bias','Partial awareness','Denial','Rational'],correct:3,bias:'Self-Attribution Bias',biasDef:"Attributing gains to skill and losses to bad luck is a classic self-attribution bias. It leads to overconfidence and excessive risk-taking in future decisions.",severity:85},
+    {q:"🎯 You've been watching ITC for 3 months. It's finally at your target price of ₹400. But today it fell ₹2. You...",opts:["Wait for it to fall more before buying","Buy now — it's at the target you set","Set a new target of ₹395","Cancel the order — the momentum is negative"],biases:['Loss aversion','Disciplined','Anchoring to new price','Recency bias'],correct:1,bias:'Anchoring',biasDef:"The original ₹2 fall is irrelevant noise. Changing your thesis based on daily price movement is anchoring to an arbitrary reference point rather than fundamental value.",severity:60},
+    {q:"💼 Your employer's stock is given as part of your salary (ESOPs). You also buy more in the open market. Your portfolio is now 60% in this one company. You feel...",opts:["Smart — I know this company better than anyone","Uncomfortable — this is too concentrated","Fine — I trust the management completely","Neutral — it's just how it worked out"],biases:['Familiarity/Own-company bias','Rational awareness','Familiarity bias','Denial'],correct:1,bias:'Familiarity & Home Bias',biasDef:"'I know it better' is an illusion of knowledge. Employees systematically overestimate their company's prospects and dramatically underestimate concentration risk — this is familiarity bias in action.",severity:90},
+    {q:"📉 A mutual fund has given –15% returns last year. You redeem and move to one that gave +42%. You think...",opts:["Past performance is a good indicator of future results","I'm protecting capital from the bad fund","This is a rational reallocation based on data","I should have stayed — timing markets is hard"],biases:['Representativeness','Loss aversion','Overconfidence','Rational regret'],correct:3,bias:'Chasing Past Performance',biasDef:"Research consistently shows that funds with the highest recent returns are often due for mean-reversion. Choosing funds based on trailing returns is one of the most expensive biases retail investors carry.",severity:80},
+    {q:"💡 You read a news story about how someone made ₹10 crore flipping small-cap stocks. You now...",opts:["Start researching small-caps aggressively","Dismiss it as survivor bias — the failures aren't reported","Feel FOMO and allocate 20% to small-caps","Ask how they did it so you can replicate"],biases:['Availability heuristic','Rational skepticism','FOMO bias','Moderate availability'],correct:1,bias:'Availability Heuristic',biasDef:"Vivid success stories are memorable; the thousands who lost money aren't covered. Your brain overestimates probability based on how easily examples come to mind — that's the availability heuristic.",severity:65},
+    {q:"🔮 You're certain that the Nifty will hit 28,000 by December. A friend offers a bet. You...",opts:["Bet confidently — your research is solid","Decline — market is too uncertain for bets","Agree but at smaller stakes","Ask what their reasoning is first"],biases:['Overconfidence','Rational humility','Moderate overconfidence','Curiosity'],correct:1,bias:'Overconfidence Bias',biasDef:"Studies show 80% of investors believe they're 'above average' — a mathematical impossibility. Overconfidence in market timing leads to excessive trading, concentrated positions, and consistent underperformance.",severity:88},
+    {q:"😰 Your portfolio fell 20% in a crash. Advisors say 'stay invested.' You...",opts:["Sell everything — protect what's left","Hold and add more during the dip","Hold nervously without adding","Rebalance according to original plan"],biases:['Loss aversion/panic','Rational opportunity','Inaction bias','Disciplined rational'],correct:3,bias:'Loss Aversion',biasDef:"Losses feel 2-2.5x more painful than equivalent gains feel good (Kahneman & Tversky). This asymmetry causes panic selling at bottoms — the costliest mistake in investing. Rational investors follow plan, not emotion.",severity:95},
+  ];
+
+  const archetypes={
+    'Overconfident Trader':'🦁',
+    'Fearful Protector':'🐢',
+    'Pattern Chaser':'🦅',
+    'Rational Allocator':'🦉',
+    'Impulse Reactor':'🐙',
+    'Home-Biased Investor':'🏠'
+  };
+
+  let currentQ=0;
+  let biasScores={};
+  let answers=[];
+
+  function renderQ(){
+    if(currentQ>=questions.length){showResult();return;}
+    const q=questions[currentQ];
+    const progDots=questions.map((_,i)=>`<div class="qp ${i<currentQ?'done':i===currentQ?'cur':''}"></div>`).join('');
+    container.innerHTML=`
+    <div class="sim-wrap">
+      <div class="sim-header">
+        <div class="sim-label">Tool 2 — Behavioural Finance</div>
+        <div class="sim-title">BIAS DETECTIVE</div>
+        <div class="sim-intro">You are the suspect. 8 market dilemmas. The AI reveals which cognitive bias is pulling your strings.</div>
+      </div>
+      <div class="quiz-scene">
+        <div class="quiz-header">
+          <div class="quiz-progress">${progDots}</div>
+          <div style="font-size:0.75rem;color:var(--muted)">Dilemma ${currentQ+1} of ${questions.length}</div>
+        </div>
+        <div class="quiz-body" style="position:relative">
+          <div class="brain-display">🧠</div>
+          <div class="bias-progress">
+            ${questions.map((_,i)=>`<div class="bp-dot ${i<currentQ?'done':i===currentQ?'current':''}"></div>`).join('')}
+          </div>
+          <div class="bias-q">${q.q}</div>
+          <div class="bias-opts">
+            ${q.opts.map((o,i)=>`
+            <div class="bias-opt" onclick="biasAnswer(${currentQ},${i})">
+              <div class="bias-opt-key">${String.fromCharCode(65+i)}</div>
+              <div>${o}</div>
+            </div>`).join('')}
+          </div>
+          <div class="bias-reveal" id="biasReveal">
+            <div class="bias-name" id="biasName"></div>
+            <div id="biasExplain" style="font-size:0.88rem;color:var(--text);line-height:1.6;margin-bottom:0.8rem"></div>
+            <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem">Bias Strength Detected</div>
+            <div class="bias-meter"><div class="bias-meter-fill" id="biasMeter" style="width:0%"></div></div>
+            <div style="text-align:right;font-size:0.72rem;color:var(--purple);margin-top:0.4rem" id="biasLevel"></div>
+            <button class="btn btn-outline btn-sm" style="margin-top:1rem" onclick="nextBiasQ()">Next Dilemma →</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    window.biasAnswer=function(qi,choice){
+      const q=questions[qi];
+      document.querySelectorAll('.bias-opt').forEach((el,i)=>{
+        el.style.pointerEvents='none';
+        if(i===choice)el.style.background='rgba(180,79,255,0.15)';
+        if(i===q.correct)el.style.borderColor='var(--green)';
+      });
+      const isRational=choice===q.correct;
+      if(!isRational){biasScores[q.bias]=(biasScores[q.bias]||0)+1;}
+      answers.push({q:qi,choice,bias:isRational?'Rational':q.bias});
+      const rev=document.getElementById('biasReveal');
+      document.getElementById('biasName').textContent=isRational?'✅ RATIONAL CHOICE':q.bias.toUpperCase();
+      document.getElementById('biasName').style.color=isRational?'var(--green)':'var(--purple)';
+      document.getElementById('biasExplain').textContent=q.biasDef;
+      setTimeout(()=>{document.getElementById('biasMeter').style.width=(isRational?20:q.severity)+'%';},100);
+      document.getElementById('biasLevel').textContent=isRational?'Low susceptibility':`${q.severity}% of investors exhibit this`;
+      rev.classList.add('show');
+    };
+    window.nextBiasQ=function(){currentQ++;renderQ();};
+  }
+
+  function showResult(){
+    const biasCount=Object.keys(biasScores).length;
+    const topBias=Object.entries(biasScores).sort((a,b)=>b[1]-a[1])[0];
+    const rationalCount=answers.filter(a=>a.bias==='Rational').length;
+    const score=Math.round(rationalCount/questions.length*100);
+
+    let archetype,arcColor,arcBg,prescription;
+    if(score>=75){archetype='Rational Allocator';arcColor='#e8c460';arcBg='linear-gradient(135deg,rgba(232,196,96,0.15),rgba(0,229,255,0.08))';prescription="You demonstrate disciplined, evidence-based thinking. Your next step: apply the Efficient Frontier framework to build portfolios that match your risk tolerance with mathematical precision. Explore factor investing and Sharpe Ratio optimisation.";}
+    else if(topBias&&topBias[0].includes('Overconfidence')){archetype='Overconfident Trader';arcColor='#ff4560';arcBg='linear-gradient(135deg,rgba(255,69,96,0.15),rgba(255,154,60,0.08))';prescription="Your biggest risk is excessive trading. Keep a decision journal — before each trade, write your thesis and the counter-argument. Research shows overconfident investors trade 45% more and earn 3.7% less annually.";}
+    else if(topBias&&topBias[0].includes('Loss')){archetype='Fearful Protector';arcColor='#00e5ff';arcBg='linear-gradient(135deg,rgba(0,229,255,0.12),rgba(0,227,150,0.08))';prescription="You over-weight downside scenarios. Pre-commit to rebalancing rules in writing BEFORE market moves. Automating investments removes emotional decision-making from the equation.";}
+    else if(topBias&&topBias[0].includes('Past')||topBias&&topBias[0].includes('Availability')){archetype='Pattern Chaser';arcColor='#b44fff';arcBg='linear-gradient(135deg,rgba(180,79,255,0.15),rgba(0,229,255,0.08))';prescription="Recency bias is your nemesis. Study base rates rather than recent examples. Index funds with systematic rebalancing are a powerful antidote — they force buying low and selling high mechanically.";}
+    else{archetype='Impulse Reactor';arcColor='#ff9a3c';arcBg='linear-gradient(135deg,rgba(255,154,60,0.15),rgba(255,69,96,0.08))';prescription="You respond to headlines and emotions. Build an Investment Policy Statement — a written document defining your rules BEFORE you invest. Stick to it regardless of news.";}
+
+    container.innerHTML=`
+    <div class="sim-wrap">
+      <div class="sim-header">
+        <div class="sim-label">Your Bias Profile — Complete</div>
+        <div class="sim-title">CASE CLOSED</div>
+      </div>
+      <div class="archetype-reveal show">
+        <div class="arch-card" style="background:${arcBg};border:1px solid ${arcColor}33">
+          <div class="arch-bg">${['🦁','🐢','🦅','🦉','🐙'][Object.keys(archetypes).indexOf(archetype)%5]||'🧠'}</div>
+          <div class="sim-label" style="color:${arcColor};position:relative;z-index:1">YOUR INVESTOR ARCHETYPE</div>
+          <div class="arch-name" style="color:${arcColor}">${archetype}</div>
+          <div class="arch-tagline">${rationalCount} of ${questions.length} decisions were fully rational</div>
+          <div class="arch-traits">
+            <div class="arch-trait"><div class="trait-label">Rationality Score</div><div class="trait-val" style="color:${arcColor}">${score}%</div></div>
+            <div class="arch-trait"><div class="trait-label">Primary Bias</div><div class="trait-val">${topBias?topBias[0]:'None detected'}</div></div>
+            <div class="arch-trait"><div class="trait-label">Risk Level</div><div class="trait-val">${score>70?'Well-calibrated':'Needs calibration'}</div></div>
+            <div class="arch-trait"><div class="trait-label">Bias Count</div><div class="trait-val">${biasCount} biases triggered</div></div>
+          </div>
+          <div class="risk-gauge"><div class="risk-gauge-fill" style="width:${score}%;background:linear-gradient(90deg,${arcColor},#00e5ff)"></div></div>
+          <div class="arch-prescription"><strong>Your prescription</strong>${prescription}</div>
+        </div>
+        <button class="btn btn-outline" style="margin-top:1rem" onclick="retakeBiasQuiz()">↺ Retake Quiz</button>
+      </div>
+    </div>`;
+    window.retakeBiasQuiz=function(){currentQ=0;biasScores={};answers=[];renderQ();};
+  }
+
+  renderQ();
+  return ()=>{};
+},
+
+/* ══════════════════════════════════════════════════════
+   TOOL 3: EFFICIENT FRONTIER SCULPTOR
+══════════════════════════════════════════════════════ */
+frontierSculptor(container){
+  container.innerHTML=`
+  <div class="sim-wrap">
+    <div class="sim-header">
+      <div class="sim-label">Tool 3 — Modern Portfolio Theory</div>
+      <div class="sim-title">FRONTIER SCULPTOR</div>
+      <div class="sim-intro">Place assets on the Risk-Return canvas. Watch the Efficient Frontier emerge. Drag assets to explore how portfolio combinations shift along the curve.</div>
+    </div>
+    <div class="panel-box" style="margin-bottom:1rem">
+      <div class="panel-title">Asset Library — Click to Place</div>
+      <div class="asset-palette" id="assetPalette"></div>
+    </div>
+    <div class="panel-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+        <div class="panel-title" style="margin:0">Risk-Return Space</div>
+        <div style="display:flex;gap:0.5rem">
+          <button class="btn btn-outline btn-sm" onclick="clearFrontier()">Clear All</button>
+          <button class="btn btn-gold btn-sm" onclick="drawFrontierCurve()">Draw Frontier</button>
+        </div>
+      </div>
+      <div style="background:#08080f;border-radius:10px;overflow:hidden">
+        <canvas id="frontierCanvas"></canvas>
+      </div>
+      <div class="frontier-info" id="frontierInfo">Place at least 2 assets to calculate portfolio combinations and draw the Efficient Frontier curve.</div>
+    </div>
+  </div>`;
+
+  const assetLib=[
+    {name:'Large-Cap Equity',r:14,sigma:22,color:'#e8c460',icon:'📈'},
+    {name:'Small-Cap Equity',r:18,sigma:32,color:'#ff9a3c',icon:'🚀'},
+    {name:'Gov. Bonds',r:7,sigma:5,color:'#00e5ff',icon:'🏛️'},
+    {name:'Corporate Bonds',r:9,sigma:8,color:'#b44fff',icon:'📋'},
+    {name:'Gold',r:8,sigma:14,color:'#ffd700',icon:'🥇'},
+    {name:'Real Estate/REITs',r:11,sigma:16,color:'#ff4560',icon:'🏢'},
+    {name:'International Eq.',r:13,sigma:20,color:'#00e396',icon:'🌍'},
+    {name:'Cryptocurrency',r:25,sigma:55,color:'#f765a3',icon:'₿'},
+  ];
+
+  const palette=document.getElementById('assetPalette');
+  assetLib.forEach((a,i)=>{
+    const chip=document.createElement('div');
+    chip.className='asset-chip';chip.id=`chip-${i}`;
+    chip.innerHTML=`<span class="chip-dot" style="background:${a.color}"></span>${a.icon} ${a.name}`;
+    chip.onclick=()=>placeAsset(i);
+    palette.appendChild(chip);
+  });
+
+  const can=document.getElementById('frontierCanvas');
+  const ctx=can.getContext('2d');
+  let placedAssets=[];
+  let isDragging=false;let dragIdx=-1;
+
+  function resizeCan(){
+    can.width=can.offsetWidth*devicePixelRatio;
+    can.height=420*devicePixelRatio;
+    can.style.width='100%';can.style.height='420px';
+    ctx.scale(devicePixelRatio,devicePixelRatio);
+    redraw();
+  }
+
+  const PAD={l:60,r:20,t:20,b:50};
+  let W,H;
+
+  function getCanvas(){W=can.offsetWidth;H=420;}
+
+  function toCanvas(r,sigma){
+    getCanvas();
+    const x=PAD.l+(sigma/(60))*(W-PAD.l-PAD.r);
+    const y=H-PAD.b-((r-0)/(30))*(H-PAD.t-PAD.b);
+    return{x,y};
+  }
+
+  function fromCanvas(x,y){
+    getCanvas();
+    const sigma=(x-PAD.l)/(W-PAD.l-PAD.r)*60;
+    const r=((H-PAD.b-y)/(H-PAD.t-PAD.b))*30;
+    return{r,sigma};
+  }
+
+  function drawGrid(){
+    getCanvas();ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+    for(let s=0;s<=60;s+=10){const x=PAD.l+s/60*(W-PAD.l-PAD.r);ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,H-PAD.b);ctx.stroke();}
+    for(let r=0;r<=30;r+=5){const y=H-PAD.b-(r/30)*(H-PAD.t-PAD.b);ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(W-PAD.r,y);ctx.stroke();}
+    // Axes
+    ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,H-PAD.b);ctx.lineTo(W-PAD.r,H-PAD.b);ctx.stroke();
+    // Labels
+    ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font=`10px 'JetBrains Mono'`;ctx.textAlign='center';
+    for(let s=0;s<=60;s+=10){const x=PAD.l+s/60*(W-PAD.l-PAD.r);ctx.fillText(s+'%',x,H-PAD.b+16);}
+    ctx.textAlign='right';
+    for(let r=0;r<=30;r+=5){const y=H-PAD.b-(r/30)*(H-PAD.t-PAD.b);ctx.fillText(r+'%',PAD.l-6,y+4);}
+    // Axis labels
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font=`11px 'Outfit'`;
+    ctx.textAlign='center';ctx.fillText('Risk (Standard Deviation →)',W/2,H-PAD.b+34);
+    ctx.save();ctx.translate(16,H/2);ctx.rotate(-Math.PI/2);
+    ctx.fillText('Return (%) →',0,0);ctx.restore();
+  }
+
+  function drawAssets(){
+    placedAssets.forEach((a,i)=>{
+      const{x,y}=toCanvas(a.r,a.sigma);
+      // Glow
+      ctx.shadowColor=a.color;ctx.shadowBlur=20;
+      ctx.beginPath();ctx.arc(x,y,12,0,Math.PI*2);ctx.fillStyle=a.color+'33';ctx.fill();
+      ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fillStyle=a.color;ctx.fill();
+      ctx.shadowBlur=0;
+      // Label
+      ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font=`bold 10px 'Outfit'`;ctx.textAlign='left';
+      ctx.fillText(a.icon+' '+a.name.split(' ')[0],x+12,y+4);
+    });
+  }
+
+  function drawFrontierLine(){
+    if(placedAssets.length<2)return;
+    // Generate portfolio combinations between pairs
+    const pts=[];
+    const n=placedAssets.length;
+    // For 2+ assets, sweep weights between each pair
+    for(let i=0;i<n;i++){
+      for(let j=i+1;j<n;j++){
+        const a=placedAssets[i],b=placedAssets[j];
+        const corr=0.1+Math.random()*0.2;
+        for(let w=0;w<=1;w+=0.05){
+          const r=w*a.r+(1-w)*b.r;
+          const v=w*w*a.sigma*a.sigma+(1-w)*(1-w)*b.sigma*b.sigma+2*w*(1-w)*a.sigma*b.sigma*corr;
+          pts.push({r,sigma:Math.sqrt(v)});
+        }
+      }
+    }
+    // Sort by sigma
+    pts.sort((a,b)=>a.sigma-b.sigma);
+    // Build efficient frontier (max return per sigma level)
+    const frontier=[];
+    let maxR=-Infinity;
+    const sigmaGroups={};
+    pts.forEach(p=>{
+      const key=Math.round(p.sigma);
+      if(!sigmaGroups[key]||sigmaGroups[key]<p.r)sigmaGroups[key]=p.r;
+    });
+    Object.entries(sigmaGroups).sort((a,b)=>a[0]-b[0]).forEach(([s,r])=>{
+      if(r>maxR){maxR=r;frontier.push({sigma:parseFloat(s),r});}
+    });
+
+    if(frontier.length<2)return;
+    // Draw all combos as dots
+    pts.forEach(p=>{
+      const{x,y}=toCanvas(p.r,p.sigma);
+      ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fillStyle='rgba(0,229,255,0.15)';ctx.fill();
+    });
+    // Draw efficient frontier
+    ctx.beginPath();
+    frontier.forEach((p,i)=>{
+      const{x,y}=toCanvas(p.r,p.sigma);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle='rgba(0,229,255,0.9)';ctx.lineWidth=3;
+    ctx.shadowColor='#00e5ff';ctx.shadowBlur=15;ctx.stroke();ctx.shadowBlur=0;
+    // Label
+    const last=frontier[frontier.length-1];
+    const{x:lx,y:ly}=toCanvas(last.r,last.sigma);
+    ctx.fillStyle='var(--cyan)';ctx.font=`bold 11px 'Outfit'`;ctx.textAlign='left';
+    ctx.fillText('Efficient Frontier',lx-80,ly-14);
+
+    // Update info
+    const minSigma=Math.min(...placedAssets.map(a=>a.sigma));
+    const maxReturn=Math.max(...placedAssets.map(a=>a.r));
+    document.getElementById('frontierInfo').innerHTML=`
+      <strong style="color:var(--cyan)">Efficient Frontier drawn with ${placedAssets.length} assets.</strong> 
+      The blue dots show all possible portfolio combinations (different weightings). 
+      The glowing cyan line = the Efficient Frontier — only these portfolios offer maximum return per unit of risk. 
+      Any portfolio below this line is suboptimal — you could get better return for the same risk. 
+      Minimum portfolio risk achievable: ~${(minSigma*0.6).toFixed(1)}% (through optimal weighting).`;
+  }
+
+  function redraw(){drawGrid();drawFrontierLine();drawAssets();}
+
+  window.placeAsset=function(i){
+    if(placedAssets.find(a=>a.name===assetLib[i].name))return;
+    placedAssets.push({...assetLib[i]});
+    document.getElementById(`chip-${i}`).classList.add('placed');
+    redraw();
+    if(placedAssets.length>=2)document.getElementById('frontierInfo').innerHTML=`${placedAssets.length} assets placed. Click <strong style="color:var(--gold)">Draw Frontier</strong> to visualise optimal combinations.`;
+  };
+  window.clearFrontier=function(){
+    placedAssets=[];
+    assetLib.forEach((_,i)=>document.getElementById(`chip-${i}`).classList.remove('placed'));
+    redraw();
+    document.getElementById('frontierInfo').textContent='Place at least 2 assets to calculate portfolio combinations and draw the Efficient Frontier curve.';
+  };
+  window.drawFrontierCurve=function(){if(placedAssets.length<2){showNotif('Place at least 2 assets first!','var(--red)');return;}redraw();};
+
+  // Drag support
+  can.addEventListener('mousedown',e=>{
+    const rect=can.getBoundingClientRect();
+    const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    dragIdx=placedAssets.findIndex(a=>{const{x,y}=toCanvas(a.r,a.sigma);return Math.hypot(x-mx,y-my)<16;});
+    if(dragIdx>=0)isDragging=true;
+  });
+  can.addEventListener('mousemove',e=>{
+    if(!isDragging)return;
+    const rect=can.getBoundingClientRect();
+    const{r,sigma}=fromCanvas(e.clientX-rect.left,e.clientY-rect.top);
+    placedAssets[dragIdx].r=Math.max(0,Math.min(30,r));
+    placedAssets[dragIdx].sigma=Math.max(1,Math.min(60,sigma));
+    redraw();
+  });
+  can.addEventListener('mouseup',()=>{isDragging=false;dragIdx=-1;});
+
+  resizeCan();
+  return ()=>{};
+},
+
+/* ══════════════════════════════════════════════════════
+   TOOL 4: CRASH SURVIVAL SIMULATOR
+══════════════════════════════════════════════════════ */
+crashSim(container){
+  const crashes={
+    dotcom:{year:'2000',name:'Dot-Com Bust',drop:'–78%',months:30,
+      data:{tech:Array.from({length:30},(_,i)=>i<6?-0.12-i*0.01:i<18?-0.05+Math.random()*0.04-0.02:0.02+Math.random()*0.02),
+            pharma:Array.from({length:30},()=>0.01+Math.random()*0.02),
+            gold:Array.from({length:30},()=>0.02+Math.random()*0.02),
+            bond:Array.from({length:30},()=>0.005+Math.random()*0.008),
+            fmcg:Array.from({length:30},()=>0.008+Math.random()*0.01)},
+      concentrated:{tech:0.9,pharma:0.05,gold:0.02,bond:0.02,fmcg:0.01},
+      diversified:{tech:0.2,pharma:0.2,gold:0.2,bond:0.3,fmcg:0.1},
+      story:'The Nasdaq fell 78% between March 2000 and October 2002. Companies like Pets.com, Webvan, and Boo.com went to zero overnight. Investors who concentrated in "hot tech" saw decades of savings erased.'},
+    crisis2008:{year:'2008',name:'Global Financial Crisis',drop:'–57%',months:18,
+      data:{tech:Array.from({length:18},(_,i)=>i<9?-0.08-i*0.005:-0.01+i*0.01),
+            pharma:Array.from({length:18},(_,i)=>i<9?-0.03:-0.01+i*0.005),
+            gold:Array.from({length:18},(_,i)=>i<9?0.05+i*0.004:0.01),
+            bond:Array.from({length:18},(_,i)=>i<9?0.02:0.01),
+            fmcg:Array.from({length:18},(_,i)=>i<9?-0.02:0.01)},
+      concentrated:{tech:0.8,pharma:0.1,gold:0.02,bond:0.05,fmcg:0.03},
+      diversified:{tech:0.2,pharma:0.15,gold:0.25,bond:0.3,fmcg:0.1},
+      story:'Lehman Brothers collapsed in September 2008. The S&P 500 lost 57% peak-to-trough. But gold surged 25% during the crisis — one of the strongest negative correlations ever observed between equities and the safe-haven metal.'},
+    covid:{year:'2020',name:'COVID Pandemic Crash',drop:'–34%',months:12,
+      data:{tech:Array.from({length:12},(_,i)=>i<2?-0.08:i<3?-0.3:0.08+i*0.01),
+            pharma:Array.from({length:12},(_,i)=>i<2?-0.02:i<3?-0.05:0.05+i*0.005),
+            gold:Array.from({length:12},(_,i)=>i<3?0.05:0.02),
+            bond:Array.from({length:12},(_,i)=>i<3?0.01:-0.01),
+            fmcg:Array.from({length:12},(_,i)=>i<2?-0.01:i<3?-0.08:0.02)},
+      concentrated:{tech:0.85,pharma:0.05,gold:0.02,bond:0.05,fmcg:0.03},
+      diversified:{tech:0.25,pharma:0.15,gold:0.2,bond:0.25,fmcg:0.15},
+      story:'The fastest 30%+ decline in stock market history — 33 days. Then the fastest recovery. Tech stocks rebounded explosively due to remote work demand. This crash rewarded diversification during the fall AND concentration during the recovery.'}
+  };
+
+  let activeCrash='dotcom';let animReq2=null;
+
+  function renderCrash(){
+    const c=crashes[activeCrash];
+    container.innerHTML=`
+    <div class="sim-wrap">
+      <div class="sim-header">
+        <div class="sim-label">Tool 4 — Risk Management</div>
+        <div class="sim-title">CRASH SURVIVAL SIMULATOR</div>
+        <div class="sim-intro">Each historical crash has its own fingerprint. See how concentrated vs. diversified portfolios survive — or don't.</div>
+      </div>
+      <div class="crash-event-cards">
+        ${Object.entries(crashes).map(([k,v])=>`
+        <div class="crash-ev ${k===activeCrash?'active':''}" onclick="selectCrash('${k}')">
+          <div class="crash-ev-year">${v.year}</div>
+          <div class="crash-ev-name">${v.name}</div>
+          <div class="crash-ev-drop">${v.drop} peak drop</div>
+        </div>`).join('')}
+      </div>
+      <div class="panel-box" style="margin-bottom:1rem;border-left:3px solid var(--red)">
+        <div class="panel-title">The Crisis</div>
+        <div style="font-size:0.88rem;color:var(--text);line-height:1.6">${c.story}</div>
+      </div>
+      <div class="crash-stage">
+        <canvas id="crashCanvas"></canvas>
+        <div class="crash-overlay" id="crashOverlay"></div>
+      </div>
+      <div style="text-align:center;margin:1rem 0">
+        <button class="btn btn-red" onclick="runCrash()">💥 Run the Crash</button>
+      </div>
+      <div class="crash-result-grid" id="crashResults"></div>
+    </div>`;
+
+    window.selectCrash=function(k){activeCrash=k;if(animReq2)clearTimeout(animReq2);renderCrash();};
+    window.runCrash=function(){
+      const can=document.getElementById('crashCanvas');
+      can.width=can.offsetWidth*devicePixelRatio;can.height=300*devicePixelRatio;
+      can.style.width='100%';can.style.height='300px';
+      const ctx=can.getContext('2d');ctx.scale(devicePixelRatio,devicePixelRatio);
+      const W=can.offsetWidth,H=300;
+      const cr=crashes[activeCrash];
+
+      function portHist(weights,data){
+        let v=100;const h=[v];
+        const months=cr.months;
+        for(let m=0;m<months;m++){
+          let r=0;Object.keys(weights).forEach(a=>{r+=weights[a]*(data[a][m]||0);});
+          v*=(1+r);h.push(v);
+        }
+        return h;
+      }
+
+      const concHist=portHist(cr.concentrated,cr.data);
+      const divHist=portHist(cr.diversified,cr.data);
+      const market=portHist({tech:1,pharma:0,gold:0,bond:0,fmcg:0},cr.data);
+
+      let frame=0;
+      function animate(){
+        const all=[...concHist.slice(0,frame+1),...divHist.slice(0,frame+1),...market.slice(0,frame+1)];
+        const minV=Math.min(...all)*0.95,maxV=Math.max(...all)*1.02;
+        const sx=i=>30+i*(W-40)/(cr.months);
+        const sy=v=>H-20-((v-minV)/(maxV-minV))*(H-40);
+        ctx.clearRect(0,0,W,H);
+        ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
+        for(let i=0;i<5;i++){const y=sy(minV+(maxV-minV)*i/4);ctx.beginPath();ctx.moveTo(30,y);ctx.lineTo(W-10,y);ctx.stroke();}
+        function drawL(hist,color,glow,dash){
+          ctx.setLineDash(dash||[]);
+          ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2.5;
+          ctx.shadowColor=glow;ctx.shadowBlur=10;
+          hist.forEach((v,i)=>{if(i===0)ctx.moveTo(sx(i),sy(v));else ctx.lineTo(sx(i),sy(v));});
+          ctx.stroke();ctx.setLineDash([]);ctx.shadowBlur=0;
+        }
+        drawL(market.slice(0,frame+1),'rgba(255,255,255,0.3)','#fff',[4,4]);
+        drawL(concHist.slice(0,frame+1),'#ff4560','#ff4560');
+        drawL(divHist.slice(0,frame+1),'#00e396','#00e396');
+        ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font=`10px 'JetBrains Mono'`;ctx.textAlign='left';
+        if(frame>0){
+          ctx.fillStyle='#ff4560';ctx.fillText(`Conc: ${(concHist[frame]-100).toFixed(1)}%`,35,22);
+          ctx.fillStyle='#00e396';ctx.fillText(`Div: ${(divHist[frame]-100).toFixed(1)}%`,35,38);
+        }
+        if(frame<cr.months){
+          if(frame===0){
+            const ov=document.getElementById('crashOverlay');
+            ov.textContent='💥 IMPACT';ov.style.color='#ff4560';ov.classList.add('show');
+            setTimeout(()=>ov.classList.remove('show'),800);
+          }
+          frame++;animReq2=setTimeout(()=>requestAnimationFrame(animate),70);
+        } else {
+          // Show results
+          const concFinal=concHist[concHist.length-1];const divFinal=divHist[divHist.length-1];
+          const concRet=(concFinal-100).toFixed(1);const divRet=(divFinal-100).toFixed(1);
+          const winner=parseFloat(divRet)>parseFloat(concRet);
+          document.getElementById('crashResults').innerHTML=`
+          <div class="crash-res glow-red">
+            <div class="res-port-name">🎯 Concentrated Portfolio</div>
+            <div class="res-final ${parseFloat(concRet)>0?'val-pos':'val-neg'}">${concRet>0?'+':''}${concRet}%</div>
+            <div class="res-breakdown">
+              ${Object.entries(cr.concentrated).map(([k,w])=>`
+              <div class="res-row"><span>${k} (${Math.round(w*100)}%)</span><span style="font-family:'JetBrains Mono',monospace">${((portHist({[k]:1},cr.data)[cr.months]-100)).toFixed(0)}%</span></div>`).join('')}
+            </div>
+            ${!winner?'<span class="survivor-badge" style="background:rgba(255,69,96,0.15);color:#ff4560">💀 Did Not Survive Well</span>':'<span class="survivor-badge" style="background:rgba(0,227,150,0.15);color:#00e396">✅ Outperformed</span>'}
+          </div>
+          <div class="crash-res glow-green">
+            <div class="res-port-name">🌊 Diversified Portfolio</div>
+            <div class="res-final ${parseFloat(divRet)>0?'val-pos':'val-neg'}">${divRet>0?'+':''}${divRet}%</div>
+            <div class="res-breakdown">
+              ${Object.entries(cr.diversified).map(([k,w])=>`
+              <div class="res-row"><span>${k} (${Math.round(w*100)}%)</span><span style="font-family:'JetBrains Mono',monospace">${((portHist({[k]:1},cr.data)[cr.months]-100)).toFixed(0)}%</span></div>`).join('')}
+            </div>
+            ${winner?'<span class="survivor-badge" style="background:rgba(0,227,150,0.15);color:#00e396">✅ Better Survivor</span>':'<span class="survivor-badge" style="background:rgba(255,154,60,0.15);color:#ff9a3c">⚠️ Lower Return</span>'}
+          </div>`;
+          showNotif(winner?'Diversification wins again! 🌊':'Concentration outperformed — but at what risk?',winner?'var(--green)':'var(--orange)');
+        }
+      }
+      animate();
+    };
+  }
+
+  renderCrash();
+  return ()=>{if(animReq2)clearTimeout(animReq2);};
+},
+
+/* ══════════════════════════════════════════════════════
+   TOOL 5: BOND DURATION RACE
+══════════════════════════════════════════════════════ */
+bondRace(container){
+  container.innerHTML=`
+  <div class="sim-wrap">
+    <div class="sim-header">
+      <div class="sim-label">Tool 5 — Fixed Income</div>
+      <div class="sim-title">BOND DURATION RACE</div>
+      <div class="sim-intro">Interest rates change — bonds react. But NOT equally. Duration determines how fast a bond's price moves. Change rates and watch the race unfold.</div>
+    </div>
+    <div class="panel-box" style="margin-bottom:1rem">
+      <div class="panel-title">Interest Rate Control</div>
+      <div class="rate-control">
+        <div>
+          <div class="sim-label">Current Rate</div>
+          <div class="rate-display" id="rateDisplay">6.0%</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.4rem">
+          <button class="rate-btn" onclick="changeRate(0.5)">▲ +0.5%</button>
+          <button class="rate-btn" onclick="changeRate(-0.5)">▼ –0.5%</button>
+        </div>
+        <div style="flex:1">
+          <div class="sl-group">
+            <div class="sl-header"><span>Drag to set rate</span><span id="rateSliderVal">6.0%</span></div>
+            <input type="range" min="2" max="14" step="0.5" value="6" id="rateSlider" oninput="setRate(parseFloat(this.value))">
+          </div>
+          <div style="display:flex;gap:0.6rem;flex-wrap:wrap">
+            <button class="btn btn-outline btn-sm" onclick="rateShock('hike')">🔺 Rate Hike (+2%)</button>
+            <button class="btn btn-outline btn-sm" onclick="rateShock('cut')">🔻 Rate Cut (–2%)</button>
+            <button class="btn btn-outline btn-sm" onclick="rateShock('crisis')">💥 Crisis Cut (–4%)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="race-track">
+      <canvas id="raceCanvas"></canvas>
+    </div>
+    <div class="bond-cards" id="bondCards"></div>
+    <div class="race-insight" id="raceInsight">Adjust the interest rate above to see how different bonds react based on their duration.</div>
+  </div>`;
+
+  const bonds=[
+    {name:'3M T-Bill',duration:0.25,coupon:5.5,color:'#00e396',icon:'⚡'},
+    {name:'1Y Bond',duration:0.97,coupon:6,color:'#b44fff',icon:'📄'},
+    {name:'5Y Bond',duration:4.2,coupon:7,color:'#00e5ff',icon:'📋'},
+    {name:'10Y Bond',duration:7.8,coupon:8,color:'#e8c460',icon:'📜'},
+    {name:'20Y Bond',duration:12.1,coupon:8.5,color:'#ff9a3c',icon:'🏛️'},
+    {name:'30Y Bond',duration:18.5,coupon:9,color:'#ff4560',icon:'🔮'},
+  ];
+
+  let baseRate=6;let currentRate=6;
+  let raceAnimReq=null;
+
+  const raceCanvas=document.getElementById('raceCanvas');
+  const rctx=raceCanvas.getContext('2d');
+
+  function resizeRaceCanvas(){
+    raceCanvas.width=raceCanvas.offsetWidth*devicePixelRatio;
+    raceCanvas.height=200*devicePixelRatio;
+    raceCanvas.style.width='100%';raceCanvas.style.height='200px';
+    rctx.scale(devicePixelRatio,devicePixelRatio);
+  }
+  resizeRaceCanvas();
+
+  function priceChange(duration,rateChange){
+    return -duration*rateChange/(1+baseRate/100)*100;
+  }
+
+  function drawRace(targetRate){
+    const W=raceCanvas.offsetWidth,H=200;
+    rctx.clearRect(0,0,W,H);
+    const rChange=targetRate-baseRate;
+    const changes=bonds.map(b=>({...b,chg:priceChange(b.duration,rChange)}));
+    const maxAbs=Math.max(...changes.map(b=>Math.abs(b.chg)),1);
+
+    const laneH=H/bonds.length;
+    changes.forEach((b,i)=>{
+      const y=i*laneH;
+      // Lane bg
+      rctx.fillStyle='rgba(255,255,255,0.02)';
+      rctx.fillRect(0,y,W,laneH-1);
+      // Bond name
+      rctx.fillStyle='rgba(255,255,255,0.5)';rctx.font=`10px 'JetBrains Mono'`;rctx.textAlign='left';
+      rctx.fillText(b.icon+' '+b.name,8,y+laneH/2+4);
+      // Bar
+      const barStart=W/2;
+      const barLen=(b.chg/maxAbs)*(W/2-100);
+      const barColor=b.chg>=0?'#00e396':'#ff4560';
+      rctx.shadowColor=barColor;rctx.shadowBlur=8;
+      rctx.fillStyle=barColor;
+      if(b.chg>=0){
+        rctx.fillRect(barStart,y+laneH*0.3,barLen,laneH*0.4);
+      } else {
+        rctx.fillRect(barStart+barLen,y+laneH*0.3,-barLen,laneH*0.4);
+      }
+      rctx.shadowBlur=0;
+      // Value
+      rctx.fillStyle=barColor;rctx.textAlign=b.chg>=0?'left':'right';
+      const valX=b.chg>=0?barStart+barLen+6:barStart+barLen-6;
+      rctx.fillText(`${b.chg>0?'+':''}${b.chg.toFixed(2)}%`,Math.max(W/2+4,Math.min(W-6,valX)),y+laneH/2+4);
+      // Center line
+      rctx.strokeStyle='rgba(255,255,255,0.1)';rctx.lineWidth=1;
+      rctx.beginPath();rctx.moveTo(barStart,y);rctx.lineTo(barStart,y+laneH-1);rctx.stroke();
+    });
+    // Update bond cards
+    updateBondCards(changes,rChange);
+  }
+
+  function updateBondCards(changes,rChange){
+    const maxChg=Math.max(...changes.map(b=>Math.abs(b.chg)));
+    const minChg=Math.min(...changes.map(b=>Math.abs(b.chg)));
+    const cards=document.getElementById('bondCards');
+    cards.innerHTML=changes.map(b=>{
+      const isLeader=b.chg>0&&Math.abs(b.chg)===maxChg;
+      const isLoser=b.chg<0&&Math.abs(b.chg)===maxChg;
+      const barPct=Math.abs(b.chg)/maxChg*100;
+      return`<div class="bond-card ${isLeader?'leader':isLoser?'loser':''}">
+        <div class="bond-name">${b.icon} ${b.name}</div>
+        <div class="sim-label" style="font-size:0.65rem">Duration: <span class="bond-duration">${b.duration}y</span></div>
+        <div class="bond-price-chg" style="color:${b.chg>=0?'var(--green)':'var(--red)'}">${b.chg>=0?'+':''}${b.chg.toFixed(2)}%</div>
+        <div class="bond-bar-wrap"><div class="bond-bar-fill" style="width:${barPct}%;background:${b.chg>=0?'var(--green)':'var(--red)'}"></div></div>
+        ${isLoser?'<div style="font-size:0.65rem;color:var(--red);margin-top:0.3rem">⚠️ Biggest loser</div>':''}
+        ${isLeader?'<div style="font-size:0.65rem;color:var(--gold);margin-top:0.3rem">🏆 Biggest gainer</div>':''}
+      </div>`;
+    }).join('');
+
+    // Insight
+    const absChange=Math.abs(rChange);
+    let insight='';
+    if(rChange===0)insight='Rates unchanged. All bond prices stable. Duration tells you the interest rate risk waiting inside each bond.';
+    else if(rChange>0)insight=`📈 Rates rose by ${rChange.toFixed(1)}%. <strong>Long-duration bonds suffer most</strong> — the 30Y bond lost ${changes[changes.length-1].chg.toFixed(2)}% while the 3M T-Bill barely moved. This is the core bond risk: longer maturity = higher duration = higher interest rate sensitivity. The 10Y's duration of 7.8 means roughly 7.8% price fall per 1% rate rise.`;
+    else insight=`📉 Rates cut by ${Math.abs(rChange).toFixed(1)}%. <strong>Long-duration bonds WIN</strong> — the 30Y bond gained ${changes[changes.length-1].chg.toFixed(2)}%. Rate cuts are a gift to long-bond holders. This is why bond fund managers play "duration bets" — positioning for rate changes before they happen. Central bank watchers get rich off this.`;
+    document.getElementById('raceInsight').innerHTML=insight;
+  }
+
+  window.changeRate=function(delta){setRate(currentRate+delta);};
+  window.setRate=function(r){
+    currentRate=Math.max(2,Math.min(14,r));
+    document.getElementById('rateDisplay').textContent=currentRate.toFixed(1)+'%';
+    document.getElementById('rateSlider').value=currentRate;
+    document.getElementById('rateSliderVal').textContent=currentRate.toFixed(1)+'%';
+    drawRace(currentRate);
+  };
+  window.rateShock=function(type){
+    const shocks={hike:2,cut:-2,crisis:-4};
+    const target=Math.max(2,Math.min(14,currentRate+shocks[type]));
+    const start=currentRate;let frame=0;const frames=30;
+    if(raceAnimReq)clearInterval(raceAnimReq);
+    raceAnimReq=setInterval(()=>{
+      frame++;const t=frame/frames;const ease=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+      const r=start+(target-start)*ease;
+      setRate(r);if(frame>=frames){clearInterval(raceAnimReq);showNotif(`Rate ${shocks[type]>0?'hiked':'cut'} to ${currentRate.toFixed(1)}%`);}
+    },30);
+  };
+
+  drawRace(currentRate);
+  return ()=>{if(raceAnimReq)clearInterval(raceAnimReq);};
+},
+
+/* ══════════════════════════════════════════════════════
+   TOOL 6: INVESTOR ARCHETYPE QUIZ (proper version)
+══════════════════════════════════════════════════════ */
+archetypeQuiz(container){
+  const Qs=[
+    {text:"🌅 Monday morning. Nifty opens down 4%. Your reaction?",opts:["Check every holding immediately","Nothing — it'll recover","Add more to my best positions","Call my broker in a panic"],weights:[{fear:2},{calm:3,rational:2},{brave:3},{panic:3,fear:1}]},
+    {text:"💰 You have ₹5 lakhs to invest. You...",opts:["Put it all in one high-conviction idea","Split equally across 5 sectors","Keep 50% in FD, invest 50% slowly","Invest everything in an index fund"],weights:[{bold:3,concentrated:2},{moderate:2},{conservative:3},{rational:3,passive:2}]},
+    {text:"📊 A stock you hold doubles in 6 months. You...",opts:["Sell half — book profits","Hold everything — ride the wave","Buy more — it's working!","Analyse if the thesis still holds"],weights:[{fearful:1,disciplined:2},{momentum:2,greedy:1},{greedy:3,bold:2},{rational:3,disciplined:2}]},
+    {text:"😱 Your portfolio is down 30% in a crash. You...",opts:["Sell and go to cash immediately","Buy more aggressively","Hold the portfolio, don't look at it","Rebalance to target allocation"],weights:[{fear:3,panic:2},{brave:3,bold:2},{calm:2,avoidant:1},{rational:3,disciplined:2}]},
+    {text:"🎲 A friend tells you about a 'sure thing' IPO. You...",opts:["Invest your full quota immediately","Research it thoroughly first","Skip it — IPOs are too risky","Ask how much he's putting in and match"],weights:[{fomo:3,greedy:2},{rational:3,disciplined:2},{conservative:3},{herd:3,fomo:1}]},
+    {text:"📈 You made 60% returns last year. You think it was...",opts:["My stock-picking skill","A combination of skill and luck","Mostly luck — the market was up broadly","My unique research edge"],weights:[{overconfident:3},{moderate:2,rational:1},{humble:3,rational:2},{overconfident:3,bold:2}]},
+    {text:"🏦 How often do you check your portfolio?",opts:["Multiple times a day","Once a week","Monthly, when I rebalance","Once a quarter"],weights:[{anxious:3,hyperactive:2},{active:2},{disciplined:3,rational:2},{calm:3,patient:2}]},
+    {text:"⚡ What does 'risk' mean to you in investing?",opts:["Losing money permanently","Volatility and price swings","Missing out on big gains","Not achieving my financial goals"],weights:[{conservative:2,fearful:1},{moderate:2},{fomo:3,bold:2},{rational:3,goal_oriented:2}]},
+  ];
+
+  let curQ=0;let scores={};let timer;let timeLeft=12;
+
+  function tallyScores(weights){weights.forEach(w=>Object.entries(w).forEach(([k,v])=>{scores[k]=(scores[k]||0)+v;}));}
+
+  function getArchetype(){
+    const s=scores;
+    if((s.rational||0)+(s.disciplined||0)>10)return{name:'The Rational Allocator',emoji:'🦉',color:'#00e5ff',bg:'rgba(0,229,255,0.08)',border:'rgba(0,229,255,0.3)',desc:'Evidence-based, disciplined, process-driven',risk:'Medium-calibrated',strategy:'Systematic rebalancing + factor investing',strength:'Emotional control under pressure',weakness:'May miss asymmetric opportunities',prescription:"You're what Kahneman calls 'System 2' — slow, deliberate, rational. Build a written Investment Policy Statement, commit to it, and ignore daily noise. You're built for long-term compounding."};
+    if((s.overconfident||0)+(s.bold||0)+(s.concentrated||0)>8)return{name:'The Overconfident Trader',emoji:'🦁',color:'#ff9a3c',bg:'rgba(255,154,60,0.08)',border:'rgba(255,154,60,0.3)',desc:'High conviction, concentrated, active',risk:'High — often too high',strategy:'Stock picking, sector bets',strength:'Acts decisively on conviction',weakness:'Excessive trading, overestimates skill',prescription:"Research shows overconfident investors earn 3.7% less annually due to excessive trading. Keep a decision journal — write your thesis AND the bear case before every trade. It will humble you productively."};
+    if((s.fear||0)+(s.panic||0)+(s.conservative||0)>8)return{name:'The Fearful Protector',emoji:'🐢',color:'#b44fff',bg:'rgba(180,79,255,0.08)',border:'rgba(180,79,255,0.3)',desc:'Risk-averse, capital-preserving, cash-heavy',risk:'Too low — inflation eats savings',strategy:'FDs, bonds, gold',strength:'Avoids devastating losses',weakness:'Paralysed by downturns, inflation risk',prescription:"Your biggest enemy isn't the market — it's inflation quietly erasing your FD returns. Start a Systematic Investment Plan (SIP) into a diversified equity fund. Automation removes the emotional decision from your hands."};
+    if((s.fomo||0)+(s.herd||0)+(s.momentum||0)>7)return{name:'The Pattern Chaser',emoji:'🦅',color:'#00e396',bg:'rgba(0,227,150,0.08)',border:'rgba(0,227,150,0.3)',desc:'Trend-follower, FOMO-driven, social investor',risk:'Volatile — buys tops, sells bottoms',strategy:'Chasing hot sectors and themes',strength:'Early in momentum moves',weakness:'Late entry, panic exits, availability bias',prescription:"Mean-reversion is your nemesis. Last year's best fund is statistically likely to underperform next year. Commit to a fixed monthly SIP into a broad index — and block financial news apps."};
+    if((s.calm||0)+(s.patient||0)+(s.passive||0)>7)return{name:'The Patient Indexer',emoji:'🧘',color:'#e8c460',bg:'rgba(232,196,96,0.08)',border:'rgba(232,196,96,0.3)',desc:'Long-term, passive, low-turnover',risk:'Appropriately low to medium',strategy:'Index funds, SIPs, buy-and-hold',strength:'Low costs, emotional discipline',weakness:'May underperform in specific cycles',prescription:"Jack Bogle was right. You're beating 90% of active fund managers through cost minimization and patience alone. Add tilt to small-cap/value factors for marginal alpha without breaking your philosophy."};
+    return{name:'The Instinct Reactor',emoji:'🐙',color:'#ff4560',bg:'rgba(255,69,96,0.08)',border:'rgba(255,69,96,0.3)',desc:'Gut-driven, impulsive, emotionally volatile',risk:'Highly unpredictable',strategy:'Reacts to news and tips',strength:'Can move quickly when right',weakness:'Inconsistent, high costs, no process',prescription:"Your best investment is not in a stock — it's in building a system. Write down your investment rules this weekend. Then follow them mechanically for 6 months. Track every trade and its original thesis. The data will show you patterns you can't see emotionally."};
+  }
+
+  function renderQuiz(){
+    if(curQ>=Qs.length){showArchetypeResult();return;}
+    const q=Qs[curQ];
+    clearInterval(timer);timeLeft=12;
+    container.innerHTML=`
+    <div class="sim-wrap">
+      <div class="sim-header">
+        <div class="sim-label">Tool 6 — Investor Psychology</div>
+        <div class="sim-title">ARCHETYPE QUIZ</div>
+      </div>
+      <div class="quiz-scene">
+        <div class="quiz-header">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:0.72rem;color:var(--muted)">Question ${curQ+1} of ${Qs.length}</div>
+              <div class="quiz-progress" style="margin-top:0.4rem">
+                ${Qs.map((_,i)=>`<div class="qp ${i<curQ?'done':i===curQ?'cur':''}"></div>`).join('')}
+              </div>
+            </div>
+            <div class="quiz-timer">
+              <svg class="timer-ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/><circle id="timerCircle" cx="22" cy="22" r="18" fill="none" stroke="${'#e8c460'}" stroke-width="3" stroke-dasharray="113" stroke-dashoffset="0" stroke-linecap="round"/></svg>
+              <span id="timerNum">12</span>
+            </div>
+          </div>
+        </div>
+        <div class="quiz-body">
+          <div class="q-text">${q.text}</div>
+          <div class="q-opts">
+            ${q.opts.map((o,i)=>`<div class="q-opt" id="qopt${i}" onclick="archetypeAnswer(${i})">${o}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    timer=setInterval(()=>{
+      timeLeft--;
+      const circle=document.getElementById('timerCircle');
+      const numEl=document.getElementById('timerNum');
+      if(circle&&numEl){
+        circle.style.strokeDashoffset=(1-timeLeft/12)*113;
+        numEl.textContent=timeLeft;
+        if(timeLeft<=3)circle.style.stroke='var(--red)';
+      }
+      if(timeLeft<=0){clearInterval(timer);archetypeAnswer(Math.floor(Math.random()*q.opts.length));}
+    },1000);
+
+    window.archetypeAnswer=function(choice){
+      clearInterval(timer);
+      document.querySelectorAll('.q-opt').forEach((el,i)=>{
+        el.style.pointerEvents='none';
+        if(i===choice)el.classList.add('chosen');
+      });
+      tallyScores([Qs[curQ].weights[choice]]);
+      setTimeout(()=>{curQ++;renderQuiz();},500);
+    };
+  }
+
+  function showArchetypeResult(){
+    const arch=getArchetype();
+    container.innerHTML=`
+    <div class="sim-wrap">
+      <div class="sim-header">
+        <div class="sim-label">Your Investor DNA — Revealed</div>
+        <div class="sim-title">ARCHETYPE UNLOCKED</div>
+      </div>
+      <div class="archetype-reveal show">
+        <div class="arch-card" style="background:${arch.bg};border:1px solid ${arch.border}">
+          <div class="arch-bg">${arch.emoji}</div>
+          <div class="sim-label" style="color:${arch.color};position:relative;z-index:1;margin-bottom:0.5rem">YOUR INVESTOR ARCHETYPE</div>
+          <div class="arch-name" style="color:${arch.color};font-size:2.5rem">${arch.emoji} ${arch.name}</div>
+          <div class="arch-tagline" style="color:${arch.color};opacity:0.7;margin-bottom:1.5rem">${arch.desc}</div>
+          <div class="arch-traits">
+            <div class="arch-trait"><div class="trait-label">Risk Profile</div><div class="trait-val">${arch.risk}</div></div>
+            <div class="arch-trait"><div class="trait-label">Natural Strategy</div><div class="trait-val">${arch.strategy}</div></div>
+            <div class="arch-trait"><div class="trait-label">Greatest Strength</div><div class="trait-val">${arch.strength}</div></div>
+            <div class="arch-trait"><div class="trait-label">Hidden Weakness</div><div class="trait-val" style="color:${arch.color}">${arch.weakness}</div></div>
+          </div>
+          <div class="arch-prescription"><strong>Your Personal Prescription</strong>${arch.prescription}</div>
+        </div>
+        <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap">
+          <button class="btn btn-gold" onclick="retakeArchetypeQuiz()">↺ Retake Quiz</button>
+          <button class="btn btn-outline" onclick="closeTool()">← Back to Lab</button>
+        </div>
+      </div>
+    </div>`;
+    window.retakeArchetypeQuiz=function(){curQ=0;scores={};renderQuiz();};
+  }
+
+  renderQuiz();
+  return ()=>{clearInterval(timer);};
+}
+
+}; // end tools
+
+/* ═══ HELPER FUNCTIONS ═══ */
+function buildPortSliders(prefix,defaults){
+  const assets=[
+    {key:'tech',label:'Tech/IT',color:'#00e5ff'},
+    {key:'pharma',label:'Pharma',color:'#00e396'},
+    {key:'fmcg',label:'FMCG',color:'#b44fff'},
+    {key:'gold',label:'Gold',color:'#ffd700'},
+  ];
+  return assets.map(a=>`
+  <div class="asset-row">
+    <div class="asset-label" style="color:${a.color}">${a.label}</div>
+    <input type="range" min="0" max="95" value="${defaults[a.key]}" id="sl-${prefix}-${a.key}" style="flex:1;margin:0 8px">
+    <div class="asset-val" id="slv-${prefix}-${a.key}">${defaults[a.key]}%</div>
+  </div>
+  <div class="asset-bar"><div class="asset-bar-fill" id="bar-${prefix}-${a.key}" style="width:${defaults[a.key]}%;background:${a.color}"></div></div>
+  `).join('');
+}
+</script>
+</body>
+</html>
